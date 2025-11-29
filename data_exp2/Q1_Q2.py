@@ -9,8 +9,8 @@ desc_stats = df.drop(columns=['PAC','离婚率','无业率','无工作能力人�
 desc_stats.columns = ['最小值', '最大值', '均值', '标准差']
 desc_stats.to_excel('1_描述性统计结果.xlsx')
 
-positive_cols = ['年平均工资', '白领比例', '大专及以上学历', '平均受教育年限']
-negative_cols = [col for col in df.columns if col not in positive_cols + ['PAC', 'NAME']]
+negative_cols = ['年平均工资', '白领比例', '大专及以上学历', '平均受教育年限']
+positive_cols = [col for col in df.columns if col not in negative_cols + ['PAC', 'NAME']]
 df_norm = df.copy()
 
 # 标准化
@@ -86,6 +86,5 @@ df_scores['CI'] = np.dot(df_scores[['C1', 'C2', 'C3', 'C4']], weights) / weights
 # 合并回原始信息
 final_result = pd.concat([df[['PAC', 'NAME']], df_scores], axis=1)
 
-# --- 6. 导出结果，供后续 ArcGIS 连接使用 ---
-final_result.to_excel('4_PCA计算结果_带CI.xlsx', index=False)
-print("\n最终结果已导出，包含 C1-C4 和 CI 列。")
+# --- 6. 导出结果 ---
+final_result.to_excel('4_PCA计算结果_最终.xlsx', index=False)

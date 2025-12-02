@@ -32,59 +32,105 @@ print(f'Bartlett 球形度检验结果:\n卡方值: {chi_square_value:.3f}, 自�
 print(f'KMO 检验结果:\n整体 KMO 值: {kmo_model:.3f}')
 # 截图这些输出贴到作业里的 KMO 表格位置
 
-# --- 2. 主成分分析 (复刻 SPSS 设置) ---
-# 作业提示提取 4 个主成分，并使用最大方差旋转 (Varimax)
-# method='principal' 对应 SPSS 的“主成分法”
+
 fa = FactorAnalyzer(n_factors=4, rotation='varimax', method='principal')
 fa.fit(data_for_pca)
 # 1. 获取“提取”列的数据 (即公因子方差)
-communalities = fa.get_communalities()
+# communalities = fa.get_communalities()
+#
+# # 2. 构建表格
+# # 变量名列表 (假设 data_for_pca 是你的数据框)
+# variable_names = data_for_pca.columns
+#
+# # 创建 DataFrame
+# df_communalities = pd.DataFrame({
+#     '变量': variable_names,
+#     '初始': 1.0,  # PCA 方法下，初始公因子方差默认为 1
+#     '提取': communalities
+# })
+#
+# # 3. 打印结果 (保留3位小数，模拟 SPSS 格式)
+# print("-" * 30)
+# print("公因子方差 (Communalities)")
+# print("-" * 30)
+# print(df_communalities.set_index('变量').round(3))
+# df_communalities.round(3).to_excel('公因子方差表.xlsx')
+#
+# # --- 3. 解释的总方差 (作业 Page 10) ---
+# ev, v, cv = fa.get_factor_variance()
+# var_table = pd.DataFrame(data={'特征值': ev, '方差贡献率': v, '累积方差贡献率': cv},
+#                          index=['F1', 'F2', 'F3', 'F4'])
+# print("\n解释的总方差:")
+# print(var_table)
+#
+# # --- 4. 旋转后的成分矩阵 (作业 Page 11) ---
+# rotated_matrix = pd.DataFrame(fa.loadings_, index=data_for_pca.columns, columns=['F1', 'F2', 'F3', 'F4'])
+# # 筛选大于 0.5 的载荷以便查看（选做）
+# print("\n旋转后的成分矩阵 (Loadings):")
+# print(rotated_matrix.round(3))
+# rotated_matrix.to_excel('旋转成分矩阵.xlsx')
 
-# 2. 构建表格
-# 变量名列表 (假设 data_for_pca 是你的数据框)
-variable_names = data_for_pca.columns
+# -----------------------------------------------------------
+# 第一步：准备工作 (确保符号正确，跟PPT一致)
+# -----------------------------------------------------------
+# 1. 获取旋转后的成分矩阵 (Loadings)
+loadings_df = pd.DataFrame(fa.loadings_, index=data_for_pca.columns, columns=['F1', 'F2', 'F3', 'F4'])
 
-# 创建 DataFrame
-df_communalities = pd.DataFrame({
-    '变量': variable_names,
-    '初始': 1.0,  # PCA 方法下，初始公因子方差默认为 1
-    '提取': communalities
-})
+# 2. 自动修正符号 (这一步很重要！确保主要指标的载荷是正的)
+# 检查每一列，如果绝对值最大的载荷是负数，就整列乘以 -1
 
-# 3. 打印结果 (保留3位小数，模拟 SPSS 格式)
-print("-" * 30)
-print("公因子方差 (Communalities)")
-print("-" * 30)
-print(df_communalities.set_index('变量').round(3))
-df_communalities.round(3).to_excel('公因子方差表.xlsx')
+# 3. 计算成分得分系数矩阵 (Score Coefficient Matrix)
+# 公式: R逆 * 载荷矩阵
+corr_matrix = data_for_pca.corr()
+score_coef_df = pd.DataFrame(
+    np.linalg.inv(corr_matrix).dot(loadings_df),
+    index=data_for_pca.columns,
+    columns=['F1', 'F2', 'F3', 'F4']
+)
 
-# --- 3. 解释的总方差 (作业 Page 10) ---
-ev, v, cv = fa.get_factor_variance()
-var_table = pd.DataFrame(data={'特征值': ev, '方差贡献率': v, '累积方差贡献率': cv},
-                         index=['F1', 'F2', 'F3', 'F4'])
-print("\n解释的总方差:")
-print(var_table)
+print("修正后的旋转成分矩阵 (Loadings):")
+print(loadings_df.round(3))
+print("\n成分得分系数矩阵 (Score Coefficients):")
+print(score_coef_df.round(3))
 
-# --- 4. 旋转后的成分矩阵 (作业 Page 11) ---
-rotated_matrix = pd.DataFrame(fa.loadings_, index=data_for_pca.columns, columns=['F1', 'F2', 'F3', 'F4'])
-# 筛选大于 0.5 的载荷以便查看（选做）
-print("\n旋转后的成分矩阵 (Loadings):")
-print(rotated_matrix.round(3))
-rotated_matrix.to_excel('旋转成分矩阵.xlsx')
+# -----------------------------------------------------------
+# 第二步：按作业要求筛选指标并计算得分 (核心修改)
+# -----------------------------------------------------------
+# 创建一个空的 DataFrame 存得分
+scores = pd.DataFrame(index=data_for_pca.index)
+for i in range(4):
+    factor_name = f'F{i + 1}'
+    score_col_name = f'C{i + 1}'
 
-# --- 5. 计算各主成分得分 & 综合得分 CI (作业 Page 12) ---
-# factor_analyzer 的 transform 方法可以直接计算因子得分 (Regression method by default)
-# 注意：SPSS 的因子得分系数矩阵和 Python 计算逻辑略有不同，但 transform 的结果是直接可用的得分。
-factor_scores = fa.transform(data_for_pca)
-df_scores = pd.DataFrame(factor_scores, columns=['C1', 'C2', 'C3', 'C4'])
+    # 1. 筛选：找出该因子下，旋转载荷绝对值 > 0.7 的变量
+    # 注意：这里是用【旋转成分矩阵】来判断“谁归谁管”
+    relevant_vars = loadings_df[loadings_df[factor_name].abs() > 0.7].index.tolist()
 
-# 计算综合得分 CI
-# CI = (C1*方差1 + C2*方差2 + C3*方差3 + C4*方差4) / 累积方差
-weights = var_table.loc['F1':'F4', '方差贡献率'].values
-df_scores['CI'] = np.dot(df_scores[['C1', 'C2', 'C3', 'C4']], weights) / weights.sum()
+    print(f"  - {score_col_name} 由以下指标构成: {relevant_vars}")
 
-# 合并回原始信息
-final_result = pd.concat([df[['PAC', 'NAME']], df_scores], axis=1)
+    subset_data = data_for_pca[relevant_vars]
+    # 获取这些变量在该因子下的得分系数 (不是载荷，是得分系数！)
+    subset_coefs = score_coef_df.loc[relevant_vars, factor_name]
 
-# --- 6. 导出结果 ---
-final_result.to_excel('4_PCA计算结果_最终.xlsx', index=False)
+    # 执行加权求和
+    scores[score_col_name] = subset_data.dot(subset_coefs)
+
+# -----------------------------------------------------------
+# 第三步：计算综合得分 CI
+# -----------------------------------------------------------
+# 获取特征值 (解释方差)
+ev, _ = fa.get_eigenvalues()
+ev = ev[:4]  # 只取前4个
+print("\n特征值 (用于计算CI的权重):", ev)
+
+# CI = C1*特征值1 + C2*特征值2 ...
+scores['CI'] = 0
+for i in range(4):
+    scores['CI'] += scores[f'C{i + 1}'] * ev[i]
+
+# 合并结果
+final_result = pd.concat([df[['PAC', 'NAME']], scores], axis=1)
+print("\n最终结果预览:")
+print(final_result.head())
+
+final_result.to_excel('4_PCA计算结果_按作业筛选版.xlsx', index=False)

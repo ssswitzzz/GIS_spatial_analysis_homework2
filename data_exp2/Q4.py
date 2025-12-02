@@ -6,7 +6,7 @@ import numpy as np
 
 plt.rcParams['font.sans-serif'] = ['STZhongsong']
 
-file_path = 'PCA计算结果.xlsx'
+file_path = '4_PCA计算结果_最终最终版.xlsx'
 df = pd.read_excel(file_path)
 cluster_data = df[['C1', 'C2', 'C3', 'C4']].copy()
 cluster_data.index = df['NAME']
